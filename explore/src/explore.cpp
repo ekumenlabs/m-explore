@@ -54,12 +54,13 @@ Explore::Explore()
   : private_nh_("~")
   , tf_listener_(ros::Duration(10.0))
   , costmap_client_(private_nh_, relative_nh_, &tf_listener_)
-  , move_base_client_("move_base")
   , prev_distance_(0)
   , last_markers_count_(0)
 {
   double timeout;
   double min_frontier_size;
+  std::string move_base_topic;
+  private_nh_.param("move_base_topic", move_base_topic, std::string("move_base"));
   private_nh_.param("planner_frequency", planner_frequency_, 1.0);
   private_nh_.param("progress_timeout", timeout, 30.0);
   progress_timeout_ = ros::Duration(timeout);
@@ -68,6 +69,9 @@ Explore::Explore()
   private_nh_.param("orientation_scale", orientation_scale_, 0.0);
   private_nh_.param("gain_scale", gain_scale_, 1.0);
   private_nh_.param("min_frontier_size", min_frontier_size, 0.5);
+
+  move_base_client_.reset(new actionlib::SimpleActionClient<
+      move_base_msgs::MoveBaseAction>(move_base_topic));
 
   search_ = frontier_exploration::FrontierSearch(costmap_client_.getCostmap(),
                                                  potential_scale_, gain_scale_,
@@ -79,7 +83,7 @@ Explore::Explore()
   }
 
   ROS_INFO("Waiting to connect to move_base server");
-  move_base_client_.waitForServer();
+  move_base_client_->waitForServer();
   ROS_INFO("Connected to move_base server");
 
   exploring_timer_ =
@@ -236,7 +240,7 @@ void Explore::makePlan()
   goal.target_pose.pose.orientation.w = 1.;
   goal.target_pose.header.frame_id = costmap_client_.getGlobalFrameID();
   goal.target_pose.header.stamp = ros::Time::now();
-  move_base_client_.sendGoal(
+  move_base_client_->sendGoal(
       goal, [this, target_position](
                 const actionlib::SimpleClientGoalState& status,
                 const move_base_msgs::MoveBaseResultConstPtr& result) {
@@ -287,7 +291,7 @@ void Explore::start()
 
 void Explore::stop()
 {
-  move_base_client_.cancelAllGoals();
+  move_base_client_->cancelAllGoals();
   exploring_timer_.stop();
   ROS_INFO("Exploration stopped.");
 }
