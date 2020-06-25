@@ -91,7 +91,7 @@ private:
   tf::TransformListener tf_listener_;
 
   Costmap2DClient costmap_client_;
-  actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>
+  std::unique_ptr<actionlib::SimpleActionClient<move_base_msgs::MoveBaseAction>>
       move_base_client_;
   frontier_exploration::FrontierSearch search_;
   ros::Timer exploring_timer_;
